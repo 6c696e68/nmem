@@ -1,0 +1,11 @@
+/target/
+/soak/
+brain.json
+**/*.rs.bk
+*.swp
+.idea/
+.vscode/
+*.json.tmp
+*.*.tmp
+.env
+.DS_Store
