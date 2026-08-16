@@ -227,7 +227,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         } => {
             match brain.link(&from, &to, parse_syn(&r#type), weight) {
                 Some(s) => println!("linked {} --{}--> {}", s.source_id, s.type_.as_str(), s.target_id),
-                None => println!("could not find both memories"),
+                None => println!("could not resolve both endpoints (need fiber id, neuron id, or matching text)"),
             }
             brain.save()?;
         }

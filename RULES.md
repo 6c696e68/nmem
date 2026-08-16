@@ -19,7 +19,8 @@ them is a bug even if tests were updated to match.
 6. Expired and superseded fibers are hidden from recall and context.
    Inspection tools (`show`, dashboard list) may still display them.
 7. `forget` matches the best Jaccard fiber, not “first token hit”.
-   `link` must pick two *distinct* neurons.
+   `link` must resolve **fiber id**, **neuron id**, or free-text candidates
+   and pick two *distinct* neurons.
 
 ## Persistence and MCP
 

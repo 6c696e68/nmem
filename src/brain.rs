@@ -159,6 +159,34 @@ impl Brain {
         Some(id)
     }
 
+    /// Resolve one side of a link: fiber id, neuron id, or content candidates.
+    /// Exact ids yield a single hit; free text yields ranked candidates so short
+    /// queries that appear in many anchors can still pair with a distinct peer.
+    fn resolve_link_candidates(&self, query_or_id: &str) -> Vec<String> {
+        let q = query_or_id.trim();
+        if q.is_empty() {
+            return vec![];
+        }
+        if let Some(f) = self.store.get_fiber(q) {
+            return vec![f.anchor_neuron_id.clone()];
+        }
+        if self.store.get_neuron(q).is_some() {
+            return vec![q.to_string()];
+        }
+        let hits = self.store.find_content_match(&crate::extract::tokenize(q), 12);
+        let mut ids = Vec::new();
+        // Anchors first, then other neurons — stable preference without dropping alternatives.
+        for n in hits.iter().filter(|n| n.is_anchor()) {
+            ids.push(n.id.clone());
+        }
+        for n in hits.iter().filter(|n| !n.is_anchor()) {
+            if !ids.iter().any(|id| id == &n.id) {
+                ids.push(n.id.clone());
+            }
+        }
+        ids
+    }
+
     pub fn link(
         &mut self,
         a_query: &str,
@@ -166,17 +194,13 @@ impl Brain {
         ty: SynapseType,
         weight: f64,
     ) -> Option<Synapse> {
-        let hits_a = self
-            .store
-            .find_content_match(&crate::extract::tokenize(a_query), 8);
-        let hits_b = self
-            .store
-            .find_content_match(&crate::extract::tokenize(b_query), 8);
+        let hits_a = self.resolve_link_candidates(a_query);
+        let hits_b = self.resolve_link_candidates(b_query);
         let mut pair = None;
         for a in &hits_a {
             for b in &hits_b {
-                if a.id != b.id {
-                    pair = Some((a.id.clone(), b.id.clone()));
+                if a != b {
+                    pair = Some((a.clone(), b.clone()));
                     break;
                 }
             }
@@ -189,7 +213,9 @@ impl Brain {
             .store
             .add_synapse(Synapse::create(&aid, &bid, ty, weight.clamp(0.1, 1.0)));
         if let Some(inv) = ty.inverse() {
-            let _ = self.store.add_synapse(Synapse::create(&bid, &aid, inv, weight * 0.95));
+            let _ = self
+                .store
+                .add_synapse(Synapse::create(&bid, &aid, inv, weight * 0.95));
         }
         Some(s)
     }

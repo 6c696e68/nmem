@@ -630,3 +630,29 @@ fn local_today_uses_offset() {
     let ict = nmem::temporal::resolve_label_tz("hôm nay", now, 7 * 3_600_000).unwrap();
     assert_ne!(utc.0, ict.0, "ICT midnight must differ from UTC midnight");
 }
+
+
+#[test]
+fn link_resolves_fiber_and_neuron_ids() {
+    let mut b = Brain::new("link_ids");
+    let r1 = b.remember("JWT expiry caused the Tuesday outage").unwrap();
+    let r2 = b.remember("Rotation cron failed on the auth service").unwrap();
+    let fiber_a = r1.fiber.id.clone();
+    let fiber_b = r2.fiber.id.clone();
+    let anchor_a = r1.fiber.anchor_neuron_id.clone();
+    let anchor_b = r2.fiber.anchor_neuron_id.clone();
+
+    // fiber id → fiber id
+    let s = b.link(&fiber_a, &fiber_b, nmem::types::SynapseType::CausedBy, 0.9);
+    assert!(s.is_some(), "fiber ids should link");
+    assert_eq!(s.as_ref().unwrap().source_id, anchor_a);
+    assert_eq!(s.as_ref().unwrap().target_id, anchor_b);
+
+    // neuron id → neuron id
+    let s2 = b.link(&anchor_a, &anchor_b, nmem::types::SynapseType::RelatedTo, 0.7);
+    assert!(s2.is_some(), "neuron ids should link");
+
+    // mixed fiber + text
+    let s3 = b.link(&fiber_a, "rotation cron auth", nmem::types::SynapseType::RelatedTo, 0.6);
+    assert!(s3.is_some(), "fiber id + content should link");
+}
